@@ -1,0 +1,15 @@
+services:
+  zeiterfassung:
+    build: https://github.com/ManuLeaN/zeiterfassung.git#main
+    image: zeiterfassung:latest
+    pull_policy: build
+    ports:
+      - "7676:3000"
+    volumes:
+      - zeiterfassung_data:/data
+    environment:
+      - TZ=Europe/Berlin
+    restart: unless-stopped
+
+volumes:
+  zeiterfassung_data:
