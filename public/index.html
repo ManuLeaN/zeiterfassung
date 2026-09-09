@@ -64,10 +64,20 @@
       <button id="weekNext">&raquo;</button>
     </div>
     <div class="breakdown">
-      <div class="breakdown-row"><span class="label">Soll</span><span id="weekViewSoll" class="value">0.00 h</span></div>
+      <div class="breakdown-row">
+        <span class="label">Soll</span>
+        <span class="edit-inline">
+          <input type="number" id="weekViewSollInput" step="0.5" min="0" class="target-input">
+          <button id="weekViewSollSave">Speichern</button>
+        </span>
+      </div>
       <div class="breakdown-row"><span class="label">Ist</span><span id="weekViewIst" class="value">0.00 h</span></div>
       <div class="breakdown-row total"><span class="label total">Saldo</span><span id="weekViewSaldo" class="value total">0.00 h</span></div>
     </div>
+    <table>
+      <thead><tr><th>Tag</th><th>Arbeit</th><th>ÜStd</th><th>Gesamt</th></tr></thead>
+      <tbody id="weekDaysBody"></tbody>
+    </table>
   </section>
 
   <section id="tab-month" class="tab-panel">

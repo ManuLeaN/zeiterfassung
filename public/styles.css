@@ -152,6 +152,20 @@ main {
   font-size: 1.05rem;
   text-align: right;
 }
+.edit-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.edit-inline button {
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
 .nav-row {
   display: flex;
   align-items: center;

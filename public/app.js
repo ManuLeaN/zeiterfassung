@@ -5,6 +5,7 @@
   const overtimeInfo = document.getElementById('overtimeInfo');
   const clockEl = document.getElementById('clock');
   const weekTargetInput = document.getElementById('weekTargetInput');
+  const weekViewSollInput = document.getElementById('weekViewSollInput');
 
   let status = { work: { running: false, startedAt: null }, overtime: { running: false, startedAt: null } };
   let daySummary = { rawWorkMinutes: 0, overtimeMinutes: 0, hours: { total: 0 } };
@@ -106,11 +107,22 @@
   function renderWeekView(data) {
     document.getElementById('weekLabel').textContent =
       `KW ${data.weekNumber} · ${fmtDateShort(data.weekStart)}–${fmtDateShort(data.weekEnd)}${data.isoYear}`;
-    document.getElementById('weekViewSoll').textContent = data.hours.soll.toFixed(2) + ' h';
+    if (document.activeElement !== weekViewSollInput) {
+      weekViewSollInput.value = data.hours.soll;
+    }
     document.getElementById('weekViewIst').textContent = data.hours.ist.toFixed(2) + ' h';
     const saldoEl = document.getElementById('weekViewSaldo');
     saldoEl.textContent = (data.hours.saldo >= 0 ? '+' : '') + data.hours.saldo.toFixed(2) + ' h';
     saldoEl.style.color = data.hours.saldo >= 0 ? '#34d399' : '#f87171';
+
+    const weekdayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    const body = document.getElementById('weekDaysBody');
+    body.innerHTML = '';
+    data.days.forEach((d, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${weekdayNames[i]} ${fmtDateShort(d.date)}</td><td>${d.hours.net.toFixed(2)}</td><td>${d.hours.overtime.toFixed(2)}</td><td>${d.hours.total.toFixed(2)}</td>`;
+      body.appendChild(tr);
+    });
   }
 
   async function refreshMonthSummary() {
@@ -262,6 +274,23 @@
   document.getElementById('weekNext').addEventListener('click', () => {
     viewWeekMonday.setDate(viewWeekMonday.getDate() + 7);
     refreshWeekView();
+  });
+
+  document.getElementById('weekViewSollSave').addEventListener('click', async () => {
+    const value = Number(weekViewSollInput.value);
+    if (!Number.isFinite(value) || value < 0) return;
+    try {
+      await api('/api/week-target', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week_start: toLocalDateString(viewWeekMonday), target_hours: value }),
+      });
+      await refreshWeekView();
+      await refreshHomeWeek();
+      renderLiveWeek();
+    } catch (e) {
+      alert(e.message);
+    }
   });
 
   document.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -493,7 +522,7 @@
     setInterval(refreshDaySummary, 15000);
     setInterval(refreshHomeWeek, 15000);
 
-    await Promise.all([refreshStatus(), refreshDaySummary(), refreshHomeWeek()]);
+    await Promise.all([refreshStatus(), refreshDaySummary(), refreshHomeWeek(), refreshWeekView()]);
     renderButtons();
     renderLiveDay();
     renderLiveWeek();

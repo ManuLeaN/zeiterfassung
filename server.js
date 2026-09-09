@@ -82,8 +82,17 @@ function setWeekTarget(weekStart, targetHours) {
 
 function weekSummary(weekStart) {
   const weekEnd = addDays(weekStart, 6);
-  const days = dailyBreakdown(weekStart, weekEnd);
-  const istMinutes = days.reduce((sum, d) => sum + d.netWorkMinutes + d.overtimeMinutes, 0);
+  const byDate = new Map(dailyBreakdown(weekStart, weekEnd).map((d) => [d.date, d]));
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(weekStart, i);
+    const d = byDate.get(date) || { netWorkMinutes: 0, overtimeMinutes: 0, totalMinutes: 0 };
+    days.push({
+      date,
+      hours: { net: hours(d.netWorkMinutes), overtime: hours(d.overtimeMinutes), total: hours(d.totalMinutes) },
+    });
+  }
+  const istMinutes = days.reduce((sum, d) => sum + d.hours.total * 60, 0);
   const targetHours = getEffectiveTarget(weekStart);
   const sollMinutes = targetHours * 60;
   const { isoYear, weekNumber } = isoWeekNumber(weekStart);
@@ -93,6 +102,7 @@ function weekSummary(weekStart) {
     isoYear,
     weekNumber,
     targetHours,
+    days,
     hours: {
       ist: hours(istMinutes),
       soll: targetHours,
