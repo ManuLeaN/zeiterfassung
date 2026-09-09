@@ -21,7 +21,13 @@ db.exec(`
     start_time TEXT NOT NULL,
     end_time TEXT
   );
+  CREATE TABLE IF NOT EXISTS week_targets (
+    week_start TEXT PRIMARY KEY,
+    target_hours REAL NOT NULL
+  );
 `);
+
+const DEFAULT_TARGET_HOURS = 40;
 
 function toLocalDate(d) {
   const y = d.getFullYear();
@@ -32,6 +38,67 @@ function toLocalDate(d) {
 
 function hours(minutes) {
   return Math.round((minutes / 60) * 100) / 100;
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return toLocalDate(d);
+}
+
+function mondayOf(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const day = d.getDay(); // 0=So, 1=Mo, ... 6=Sa
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return toLocalDate(d);
+}
+
+function isoWeekNumber(mondayStr) {
+  const d = new Date(`${mondayStr}T00:00:00`);
+  d.setDate(d.getDate() + 3); // Donnerstag dieser Woche bestimmt das ISO-Jahr
+  const isoYear = d.getFullYear();
+  const jan4 = new Date(isoYear, 0, 4);
+  const week1Monday = new Date(jan4);
+  const jan4Day = jan4.getDay() || 7;
+  week1Monday.setDate(jan4.getDate() - jan4Day + 1);
+  const weekNumber = Math.round((d - week1Monday) / (7 * 86400000)) + 1;
+  return { isoYear, weekNumber };
+}
+
+function getEffectiveTarget(weekStart) {
+  const row = db.prepare(
+    `SELECT target_hours FROM week_targets WHERE week_start <= ? ORDER BY week_start DESC LIMIT 1`
+  ).get(weekStart);
+  return row ? row.target_hours : DEFAULT_TARGET_HOURS;
+}
+
+function setWeekTarget(weekStart, targetHours) {
+  db.prepare(
+    `INSERT INTO week_targets (week_start, target_hours) VALUES (?, ?)
+     ON CONFLICT(week_start) DO UPDATE SET target_hours = excluded.target_hours`
+  ).run(weekStart, targetHours);
+}
+
+function weekSummary(weekStart) {
+  const weekEnd = addDays(weekStart, 6);
+  const days = dailyBreakdown(weekStart, weekEnd);
+  const istMinutes = days.reduce((sum, d) => sum + d.netWorkMinutes + d.overtimeMinutes, 0);
+  const targetHours = getEffectiveTarget(weekStart);
+  const sollMinutes = targetHours * 60;
+  const { isoYear, weekNumber } = isoWeekNumber(weekStart);
+  return {
+    weekStart,
+    weekEnd,
+    isoYear,
+    weekNumber,
+    targetHours,
+    hours: {
+      ist: hours(istMinutes),
+      soll: targetHours,
+      saldo: hours(istMinutes - sollMinutes),
+    },
+  };
 }
 
 function getRunning(type) {
@@ -348,6 +415,39 @@ app.get('/api/summary/year', (req, res, next) => {
   try {
     const year = req.query.year || String(new Date().getFullYear());
     res.json(yearSummary(year));
+  } catch (err) { next(err); }
+});
+
+app.get('/api/summary/week', (req, res, next) => {
+  try {
+    const weekStart = req.query.week_start || mondayOf(toLocalDate(new Date()));
+    res.json(weekSummary(weekStart));
+  } catch (err) { next(err); }
+});
+
+app.get('/api/week-target', (req, res, next) => {
+  try {
+    const weekStart = req.query.week_start || mondayOf(toLocalDate(new Date()));
+    res.json({ weekStart, targetHours: getEffectiveTarget(weekStart) });
+  } catch (err) { next(err); }
+});
+
+app.put('/api/week-target', (req, res, next) => {
+  try {
+    const { week_start, target_hours } = req.body || {};
+    if (!week_start || Number.isNaN(new Date(week_start).getTime())) {
+      const err = new Error('week_start is required and must be a valid date');
+      err.status = 400;
+      throw err;
+    }
+    const targetHours = Number(target_hours);
+    if (!Number.isFinite(targetHours) || targetHours < 0) {
+      const err = new Error('target_hours must be a non-negative number');
+      err.status = 400;
+      throw err;
+    }
+    setWeekTarget(mondayOf(week_start), targetHours);
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

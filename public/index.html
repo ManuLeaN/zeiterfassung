@@ -31,6 +31,7 @@
 
   <nav class="tabs">
     <button class="tab-btn active" data-tab="day">Heute</button>
+    <button class="tab-btn" data-tab="week">Woche</button>
     <button class="tab-btn" data-tab="month">Monat</button>
     <button class="tab-btn" data-tab="year">Jahr</button>
     <button class="tab-btn" data-tab="admin">Admin</button>
@@ -44,6 +45,28 @@
       <div class="breakdown-row result"><span class="label">Netto-Arbeitszeit</span><span id="dayNet" class="value">0.00 h</span></div>
       <div class="breakdown-row"><span class="label">Überstunden</span><span id="dayOvertime" class="value">0.00 h</span></div>
       <div class="breakdown-row total"><span class="label total">Gesamt</span><span id="dayTotal" class="value total">0.00 h</span></div>
+    </div>
+
+    <div class="breakdown week-widget">
+      <div class="breakdown-row">
+        <span class="label">Wochenarbeitsstunden (Soll)</span>
+        <input type="number" id="weekTargetInput" step="0.5" min="0" class="target-input">
+      </div>
+      <div class="breakdown-row"><span class="label">Ist diese Woche</span><span id="weekIst" class="value">0.00 h</span></div>
+      <div class="breakdown-row total"><span class="label total">Saldo</span><span id="weekSaldo" class="value total">0.00 h</span></div>
+    </div>
+  </section>
+
+  <section id="tab-week" class="tab-panel">
+    <div class="nav-row">
+      <button id="weekPrev">&laquo;</button>
+      <span id="weekLabel"></span>
+      <button id="weekNext">&raquo;</button>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-row"><span class="label">Soll</span><span id="weekViewSoll" class="value">0.00 h</span></div>
+      <div class="breakdown-row"><span class="label">Ist</span><span id="weekViewIst" class="value">0.00 h</span></div>
+      <div class="breakdown-row total"><span class="label total">Saldo</span><span id="weekViewSaldo" class="value total">0.00 h</span></div>
     </div>
   </section>
 

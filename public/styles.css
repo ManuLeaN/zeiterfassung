@@ -140,6 +140,18 @@ main {
   font-size: 1.3rem;
   font-weight: 800;
 }
+
+.week-widget { margin-top: 12px; }
+.target-input {
+  width: 80px;
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 1.05rem;
+  text-align: right;
+}
 .nav-row {
   display: flex;
   align-items: center;

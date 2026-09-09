@@ -4,12 +4,15 @@
   const workInfo = document.getElementById('workInfo');
   const overtimeInfo = document.getElementById('overtimeInfo');
   const clockEl = document.getElementById('clock');
+  const weekTargetInput = document.getElementById('weekTargetInput');
 
   let status = { work: { running: false, startedAt: null }, overtime: { running: false, startedAt: null } };
-  let daySummary = { rawWorkMinutes: 0, overtimeMinutes: 0 };
+  let daySummary = { rawWorkMinutes: 0, overtimeMinutes: 0, hours: { total: 0 } };
+  let homeWeekSummary = { hours: { ist: 0, soll: 40, saldo: -40 } };
 
   let viewMonth = new Date(); // first-of-month reference for the "Monat" tab
   let viewYear = new Date().getFullYear();
+  let viewWeekMonday = mondayOf(new Date()); // Monday reference for the "Woche" tab
 
   const BREAK_MINUTES = 30;
   const VBZ_MINUTES = 24; // Vorbereitungszeit: 0.4 h pro Arbeitstag
@@ -46,6 +49,25 @@
     return toDatetimeLocalValue(new Date().toISOString());
   }
 
+  function toLocalDateString(d) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function mondayOf(d) {
+    const copy = new Date(d);
+    const day = copy.getDay(); // 0=So, 1=Mo, ... 6=Sa
+    const diff = day === 0 ? -6 : 1 - day;
+    copy.setDate(copy.getDate() + diff);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+
+  function fmtDateShort(dateStr) {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}.${m}.`;
+  }
+
   async function api(path, opts) {
     const res = await fetch(path, opts);
     if (!res.ok) {
@@ -61,6 +83,34 @@
 
   async function refreshDaySummary() {
     daySummary = await api('/api/summary/day');
+  }
+
+  async function refreshHomeWeek() {
+    const weekStart = toLocalDateString(mondayOf(new Date()));
+    const [target, summary] = await Promise.all([
+      api(`/api/week-target?week_start=${weekStart}`),
+      api(`/api/summary/week?week_start=${weekStart}`),
+    ]);
+    homeWeekSummary = summary;
+    if (document.activeElement !== weekTargetInput) {
+      weekTargetInput.value = target.targetHours;
+    }
+  }
+
+  async function refreshWeekView() {
+    const weekStart = toLocalDateString(viewWeekMonday);
+    const data = await api(`/api/summary/week?week_start=${weekStart}`);
+    renderWeekView(data);
+  }
+
+  function renderWeekView(data) {
+    document.getElementById('weekLabel').textContent =
+      `KW ${data.weekNumber} · ${fmtDateShort(data.weekStart)}–${fmtDateShort(data.weekEnd)}${data.isoYear}`;
+    document.getElementById('weekViewSoll').textContent = data.hours.soll.toFixed(2) + ' h';
+    document.getElementById('weekViewIst').textContent = data.hours.ist.toFixed(2) + ' h';
+    const saldoEl = document.getElementById('weekViewSaldo');
+    saldoEl.textContent = (data.hours.saldo >= 0 ? '+' : '') + data.hours.saldo.toFixed(2) + ' h';
+    saldoEl.style.color = data.hours.saldo >= 0 ? '#34d399' : '#f87171';
   }
 
   async function refreshMonthSummary() {
@@ -111,6 +161,24 @@
     document.getElementById('dayTotal').textContent = fmtHours(total);
   }
 
+  function renderLiveWeek() {
+    const rawWork = daySummary.rawWorkMinutes + (status.work.running ? elapsedMinutes(status.work.startedAt) : 0);
+    const overtime = daySummary.overtimeMinutes + (status.overtime.running ? elapsedMinutes(status.overtime.startedAt) : 0);
+    const breakMin = rawWork > 0 ? BREAK_MINUTES : 0;
+    const vbzMin = rawWork > 0 ? VBZ_MINUTES : 0;
+    const net = rawWork > 0 ? Math.max(0, rawWork - breakMin + vbzMin) : 0;
+    const todayLiveTotalHours = (net + overtime) / 60;
+
+    const weekIstLive = homeWeekSummary.hours.ist - daySummary.hours.total + todayLiveTotalHours;
+    const soll = homeWeekSummary.hours.soll;
+    const saldo = weekIstLive - soll;
+
+    document.getElementById('weekIst').textContent = weekIstLive.toFixed(2) + ' h';
+    const saldoEl = document.getElementById('weekSaldo');
+    saldoEl.textContent = (saldo >= 0 ? '+' : '') + saldo.toFixed(2) + ' h';
+    saldoEl.style.color = saldo >= 0 ? '#34d399' : '#f87171';
+  }
+
   function renderMonth(data) {
     const [y, m] = data.month.split('-');
     document.getElementById('monthLabel').textContent = `${m}/${y}`;
@@ -145,9 +213,10 @@
     workBtn.disabled = true;
     try {
       await api(status.work.running ? '/api/work/stop' : '/api/work/start', { method: 'POST' });
-      await Promise.all([refreshStatus(), refreshDaySummary()]);
+      await Promise.all([refreshStatus(), refreshDaySummary(), refreshHomeWeek()]);
       renderButtons();
       renderLiveDay();
+      renderLiveWeek();
     } catch (e) {
       alert(e.message);
     } finally {
@@ -159,14 +228,40 @@
     overtimeBtn.disabled = true;
     try {
       await api(status.overtime.running ? '/api/overtime/stop' : '/api/overtime/start', { method: 'POST' });
-      await Promise.all([refreshStatus(), refreshDaySummary()]);
+      await Promise.all([refreshStatus(), refreshDaySummary(), refreshHomeWeek()]);
       renderButtons();
       renderLiveDay();
+      renderLiveWeek();
     } catch (e) {
       alert(e.message);
     } finally {
       overtimeBtn.disabled = false;
     }
+  });
+
+  weekTargetInput.addEventListener('change', async () => {
+    const value = Number(weekTargetInput.value);
+    if (!Number.isFinite(value) || value < 0) return;
+    try {
+      await api('/api/week-target', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week_start: toLocalDateString(mondayOf(new Date())), target_hours: value }),
+      });
+      await refreshHomeWeek();
+      renderLiveWeek();
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+
+  document.getElementById('weekPrev').addEventListener('click', () => {
+    viewWeekMonday.setDate(viewWeekMonday.getDate() - 7);
+    refreshWeekView();
+  });
+  document.getElementById('weekNext').addEventListener('click', () => {
+    viewWeekMonday.setDate(viewWeekMonday.getDate() + 7);
+    refreshWeekView();
   });
 
   document.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -175,6 +270,7 @@
       document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+      if (btn.dataset.tab === 'week') refreshWeekView();
       if (btn.dataset.tab === 'month') refreshMonthSummary();
       if (btn.dataset.tab === 'year') refreshYearSummary();
       if (btn.dataset.tab === 'admin') refreshAdminSessions();
@@ -187,15 +283,11 @@
   const adminBody = document.getElementById('adminBody');
   adminDateInput.value = toLocalDateString(new Date());
 
-  function toLocalDateString(d) {
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  }
-
   async function refreshAll() {
-    await Promise.all([refreshStatus(), refreshDaySummary()]);
+    await Promise.all([refreshStatus(), refreshDaySummary(), refreshHomeWeek()]);
     renderButtons();
     renderLiveDay();
+    renderLiveWeek();
   }
 
   function typeLabel(type) {
@@ -396,12 +488,15 @@
     tickClock();
     setInterval(tickClock, 1000);
     setInterval(renderLiveDay, 1000);
+    setInterval(renderLiveWeek, 1000);
     setInterval(() => { refreshStatus().then(renderButtons); }, 15000);
     setInterval(refreshDaySummary, 15000);
+    setInterval(refreshHomeWeek, 15000);
 
-    await Promise.all([refreshStatus(), refreshDaySummary()]);
+    await Promise.all([refreshStatus(), refreshDaySummary(), refreshHomeWeek()]);
     renderButtons();
     renderLiveDay();
+    renderLiveWeek();
   }
 
   init();
