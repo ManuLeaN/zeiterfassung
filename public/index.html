@@ -37,11 +37,13 @@
   </nav>
 
   <section id="tab-day" class="tab-panel active">
-    <div class="summary-grid">
-      <div><span class="label">Netto-Arbeit</span><span id="dayNet" class="value">0.00 h</span></div>
-      <div><span class="label">Pause</span><span id="dayBreak" class="value">0.00 h</span></div>
-      <div><span class="label">Überstunden</span><span id="dayOvertime" class="value">0.00 h</span></div>
-      <div><span class="label total">Gesamt</span><span id="dayTotal" class="value total">0.00 h</span></div>
+    <div class="breakdown">
+      <div class="breakdown-row"><span class="label">Arbeitszeit</span><span id="dayRaw" class="value">0.00 h</span></div>
+      <div class="breakdown-row subtract"><span class="label">Pause</span><span id="dayBreak" class="value">-0.00 h</span></div>
+      <div class="breakdown-row add"><span class="label">VBZ</span><span id="dayVbz" class="value">+0.00 h</span></div>
+      <div class="breakdown-row result"><span class="label">Netto-Arbeitszeit</span><span id="dayNet" class="value">0.00 h</span></div>
+      <div class="breakdown-row"><span class="label">Überstunden</span><span id="dayOvertime" class="value">0.00 h</span></div>
+      <div class="breakdown-row total"><span class="label total">Gesamt</span><span id="dayTotal" class="value total">0.00 h</span></div>
     </div>
   </section>
 

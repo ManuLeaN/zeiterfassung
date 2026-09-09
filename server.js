@@ -8,6 +8,7 @@ const { DatabaseSync } = require('node:sqlite');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PORT = process.env.PORT || 3000;
 const BREAK_MINUTES = 30;
+const VBZ_MINUTES = 24; // Vorbereitungszeit: 0.4 h, an jedem Arbeitstag pauschal addiert
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(path.join(DATA_DIR, 'zeiterfassung.db'));
@@ -107,11 +108,14 @@ function dailyBreakdown(fromDate, toDate) {
   return rows.map((r) => {
     const rawWorkMinutes = r.rawWorkMinutes || 0;
     const overtimeMinutes = r.overtimeMinutes || 0;
-    const netWorkMinutes = rawWorkMinutes > 0 ? Math.max(0, rawWorkMinutes - BREAK_MINUTES) : 0;
+    const breakMinutes = rawWorkMinutes > 0 ? BREAK_MINUTES : 0;
+    const vbzMinutes = rawWorkMinutes > 0 ? VBZ_MINUTES : 0;
+    const netWorkMinutes = rawWorkMinutes > 0 ? Math.max(0, rawWorkMinutes - breakMinutes + vbzMinutes) : 0;
     return {
       date: r.date,
       rawWorkMinutes,
-      breakMinutes: rawWorkMinutes > 0 ? BREAK_MINUTES : 0,
+      breakMinutes,
+      vbzMinutes,
       netWorkMinutes,
       overtimeMinutes,
       totalMinutes: netWorkMinutes + overtimeMinutes,
@@ -126,15 +130,19 @@ function daySummary(dateStr) {
       date: dateStr,
       rawWorkMinutes: 0,
       breakMinutes: 0,
+      vbzMinutes: 0,
       netWorkMinutes: 0,
       overtimeMinutes: 0,
       totalMinutes: 0,
-      hours: { net: 0, overtime: 0, total: 0 },
+      hours: { raw: 0, break: 0, vbz: 0, net: 0, overtime: 0, total: 0 },
     };
   }
   return {
     ...row,
     hours: {
+      raw: hours(row.rawWorkMinutes),
+      break: hours(row.breakMinutes),
+      vbz: hours(row.vbzMinutes),
       net: hours(row.netWorkMinutes),
       overtime: hours(row.overtimeMinutes),
       total: hours(row.totalMinutes),

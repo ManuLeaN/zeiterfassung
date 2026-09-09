@@ -108,6 +108,38 @@ main {
 .label { color: #94a3b8; font-size: 0.85rem; }
 .value { font-size: 1.4rem; font-weight: 600; }
 .value.total, .label.total { color: #34d399; }
+
+.breakdown {
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 14px;
+  padding: 4px 16px;
+  box-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.4);
+}
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.breakdown-row:last-child { border-bottom: none; }
+.breakdown-row .label { font-size: 0.95rem; }
+.breakdown-row .value { font-size: 1.1rem; }
+.breakdown-row.subtract .value { color: #f87171; }
+.breakdown-row.add .value { color: #38bdf8; }
+.breakdown-row.result {
+  border-top: 1px dashed rgba(148, 163, 184, 0.3);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.breakdown-row.result .label,
+.breakdown-row.result .value { font-weight: 700; }
+.breakdown-row.total .label,
+.breakdown-row.total .value {
+  color: #34d399;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
 .nav-row {
   display: flex;
   align-items: center;

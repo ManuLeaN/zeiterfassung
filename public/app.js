@@ -11,8 +11,15 @@
   let viewMonth = new Date(); // first-of-month reference for the "Monat" tab
   let viewYear = new Date().getFullYear();
 
+  const BREAK_MINUTES = 30;
+  const VBZ_MINUTES = 24; // Vorbereitungszeit: 0.4 h pro Arbeitstag
+
   function fmtHours(minutes) {
     return (Math.round((minutes / 60) * 100) / 100).toFixed(2) + ' h';
+  }
+
+  function fmtSigned(minutes, sign) {
+    return sign + (Math.round((minutes / 60) * 100) / 100).toFixed(2) + ' h';
   }
 
   function elapsedMinutes(iso) {
@@ -91,12 +98,15 @@
   function renderLiveDay() {
     const rawWork = daySummary.rawWorkMinutes + (status.work.running ? elapsedMinutes(status.work.startedAt) : 0);
     const overtime = daySummary.overtimeMinutes + (status.overtime.running ? elapsedMinutes(status.overtime.startedAt) : 0);
-    const breakMin = rawWork > 0 ? 30 : 0;
-    const net = rawWork > 0 ? Math.max(0, rawWork - 30) : 0;
+    const breakMin = rawWork > 0 ? BREAK_MINUTES : 0;
+    const vbzMin = rawWork > 0 ? VBZ_MINUTES : 0;
+    const net = rawWork > 0 ? Math.max(0, rawWork - breakMin + vbzMin) : 0;
     const total = net + overtime;
 
+    document.getElementById('dayRaw').textContent = fmtHours(rawWork);
+    document.getElementById('dayBreak').textContent = fmtSigned(breakMin, '-');
+    document.getElementById('dayVbz').textContent = fmtSigned(vbzMin, '+');
     document.getElementById('dayNet').textContent = fmtHours(net);
-    document.getElementById('dayBreak').textContent = fmtHours(breakMin);
     document.getElementById('dayOvertime').textContent = fmtHours(overtime);
     document.getElementById('dayTotal').textContent = fmtHours(total);
   }
