@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14532d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zeiterfassung">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Zeiterfassung</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>Zeiterfassung</h1>
+  <div id="clock"></div>
+</header>
+
+<main>
+  <section class="tracker">
+    <button id="workBtn" class="big-btn work-idle">Start</button>
+    <div id="workInfo" class="info"></div>
+  </section>
+
+  <section class="tracker secondary">
+    <button id="overtimeBtn" class="big-btn overtime-idle">Überstunden</button>
+    <div id="overtimeInfo" class="info"></div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="day">Heute</button>
+    <button class="tab-btn" data-tab="month">Monat</button>
+    <button class="tab-btn" data-tab="year">Jahr</button>
+    <button class="tab-btn" data-tab="admin">Admin</button>
+  </nav>
+
+  <section id="tab-day" class="tab-panel active">
+    <div class="summary-grid">
+      <div><span class="label">Netto-Arbeit</span><span id="dayNet" class="value">0.00 h</span></div>
+      <div><span class="label">Pause</span><span id="dayBreak" class="value">0.00 h</span></div>
+      <div><span class="label">Überstunden</span><span id="dayOvertime" class="value">0.00 h</span></div>
+      <div><span class="label total">Gesamt</span><span id="dayTotal" class="value total">0.00 h</span></div>
+    </div>
+  </section>
+
+  <section id="tab-month" class="tab-panel">
+    <div class="nav-row">
+      <button id="monthPrev">&laquo;</button>
+      <span id="monthLabel"></span>
+      <button id="monthNext">&raquo;</button>
+    </div>
+    <table>
+      <thead><tr><th>Tag</th><th>Arbeit</th><th>ÜStd</th><th>Gesamt</th></tr></thead>
+      <tbody id="monthBody"></tbody>
+      <tfoot><tr id="monthTotals"><th>Summe</th><th></th><th></th><th></th></tr></tfoot>
+    </table>
+  </section>
+
+  <section id="tab-year" class="tab-panel">
+    <div class="nav-row">
+      <button id="yearPrev">&laquo;</button>
+      <span id="yearLabel"></span>
+      <button id="yearNext">&raquo;</button>
+    </div>
+    <table>
+      <thead><tr><th>Monat</th><th>Arbeit</th><th>ÜStd</th><th>Gesamt</th></tr></thead>
+      <tbody id="yearBody"></tbody>
+      <tfoot><tr id="yearTotals"><th>Summe</th><th></th><th></th><th></th></tr></tfoot>
+    </table>
+  </section>
+
+  <section id="tab-admin" class="tab-panel">
+    <div class="nav-row">
+      <input type="date" id="adminDate">
+      <button id="adminAddRow">+ Neuer Eintrag</button>
+    </div>
+    <table class="admin-table">
+      <thead><tr><th>Typ</th><th>Start</th><th>Ende</th><th>Dauer</th><th></th></tr></thead>
+      <tbody id="adminBody"></tbody>
+    </table>
+
+    <h3>Debug: Start festlegen</h3>
+    <p class="hint">Startet einen Timer rückwirkend zu einem gewählten Zeitpunkt (z. B. wenn du vergessen hast, auf Start zu drücken).</p>
+    <div class="debug-row">
+      <select id="debugType">
+        <option value="work">Arbeit</option>
+        <option value="overtime">Überstunden</option>
+      </select>
+      <input type="datetime-local" id="debugStartTime">
+      <button id="debugStartBtn">Starten</button>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

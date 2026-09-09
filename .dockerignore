@@ -1,0 +1,7 @@
+node_modules
+data
+.git
+.claude
+.claude-flow
+.agents
+.swarm

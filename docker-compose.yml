@@ -1,0 +1,14 @@
+services:
+  zeiterfassung:
+    build: .
+    image: zeiterfassung:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - zeiterfassung_data:/data
+    environment:
+      - TZ=Europe/Berlin
+    restart: unless-stopped
+
+volumes:
+  zeiterfassung_data:
