@@ -3,7 +3,7 @@ services:
     build: .
     image: zeiterfassung:latest
     ports:
-      - "3000:3000"
+      - "7676:3000"
     volumes:
       - zeiterfassung_data:/data
     environment:

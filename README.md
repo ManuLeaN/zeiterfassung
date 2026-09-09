@@ -24,72 +24,62 @@ DATA_DIR=./data PORT=3000 node server.js
 
 Dann `http://localhost:3000` öffnen.
 
-## Hosting auf TrueNAS SCALE
+## Hosting auf TrueNAS SCALE via Portainer
 
-Die App läuft als ein einziges Docker-Image. TrueNAS SCALE zieht Images aus
-einer Registry (z. B. Docker Hub), baut sie nicht selbst aus einem Dockerfile.
-Deshalb: einmal bauen & hochladen, danach nur noch in TrueNAS konfigurieren.
+Quelle: [github.com/ManuLeaN/zeiterfassung](https://github.com/ManuLeaN/zeiterfassung).
+Kein Docker Hub nötig — Portainer klont das Repo direkt auf den NAS und baut
+das Image dort aus dem `Dockerfile`.
 
-### 1. Image bauen und zu Docker Hub hochladen
+### 1. Portainer installieren
 
-Auf einem Rechner mit Docker (z. B. diesem PC mit Docker Desktop):
+- **Apps → Discover Apps** → nach "Portainer" suchen → installieren.
+- Falls nicht gelistet: **Custom App** / "Launch Docker Image" mit
+  - Image: `portainer/portainer-ce:latest`
+  - Container Port `9443` → Node Port `9443`
+  - Volume: Container-Pfad `/data` → eigenes Dataset (z. B. `apps/portainer-data`)
+  - Zusätzlich Docker-Socket mounten: Host Path `/var/run/docker.sock` →
+    Container-Pfad `/var/run/docker.sock` (damit Portainer den NAS-eigenen
+    Docker-Daemon steuern kann)
 
-```bash
-docker login
-docker build -t DEIN_DOCKERHUB_NAME/zeiterfassung:latest .
-docker push DEIN_DOCKERHUB_NAME/zeiterfassung:latest
-```
+### 2. Stack aus dem Repo deployen
 
-(Ein kostenloser öffentlicher Docker-Hub-Account reicht; das Repo kann public
-bleiben, es enthält keine Zugangsdaten.)
+- Portainer öffnen: `https://TRUENAS_IP:9443`, Admin-Zugang einrichten,
+  Environment "local" wählen.
+- **Stacks → Add stack**
+  - Name: `zeiterfassung`
+  - Build method: **Repository**
+  - Repository URL: `https://github.com/ManuLeaN/zeiterfassung`
+  - Repository reference: `refs/heads/main`
+  - Compose path: `docker-compose.yml`
+  - **Deploy the stack**
 
-### 2. In TrueNAS SCALE ein Dataset für die Daten anlegen
+Portainer klont das Repo, baut das Image über den `build:`-Eintrag in
+`docker-compose.yml` und startet den Container inkl. Port-Mapping und
+persistentem Volume automatisch.
 
-- **Storage → Datasets** → im gewünschten Pool ein neues Dataset anlegen,
-  z. B. `apps/zeiterfassung-data`. Hier liegt später die SQLite-Datei.
+### 3. Nutzen
 
-### 3. App in TrueNAS SCALE anlegen
-
-- **Apps → Discover Apps → Custom App** (heißt je nach SCALE-Version auch
-  "Launch Docker Image").
-- **Application Name:** `zeiterfassung`
-- **Image Repository:** `DEIN_DOCKERHUB_NAME/zeiterfassung`
-- **Image Tag:** `latest`
-- **Container Port:** `3000` → **Node Port** z. B. `3000` (frei wählbar, das
-  ist der Port, den du später im Browser ansprichst)
-- **Storage:** ein "Host Path" oder "Ix Volume" hinzufügen:
-  - Mount Path im Container: `/data`
-  - Host Path: das in Schritt 2 angelegte Dataset
-- **Environment Variables** (optional, Defaults passen für Deutschland):
-  - `TZ=Europe/Berlin` (ist im Image schon Default, hier nur falls du eine
-    andere Zeitzone brauchst)
-- Speichern / **Deploy**.
-
-### 4. Nutzen
-
-- Im Heimnetz (PC oder Handy im selben WLAN): `http://TRUENAS_IP:3000`
-  öffnen.
+- Im Heimnetz (oder über dein VPN): `http://TRUENAS_IP:7676` öffnen
+  (Container lauscht intern auf Port 3000, `docker-compose.yml` mappt das auf
+  Host-Port `7676`, siehe `ports:` dort — bei Bedarf einfach anpassen).
 - Auf dem Handy: Seite öffnen → Browser-Menü → **"Zum Startbildschirm
   hinzufügen"**. Danach startet die App wie eine normale App-Kachel.
 
 ### Updates einspielen
 
-Wenn du am Code etwas änderst:
-
-```bash
-docker build -t DEIN_DOCKERHUB_NAME/zeiterfassung:latest .
-docker push DEIN_DOCKERHUB_NAME/zeiterfassung:latest
-```
-
-Danach in TrueNAS die App anhalten und mit "Update"/"Redeploy" neu starten,
-damit sie das neue `:latest`-Image zieht. Die Daten im `/data`-Dataset bleiben
-dabei unberührt.
+Code ändern → committen → `git push` zu GitHub. Danach in Portainer beim
+Stack **"Pull and redeploy"** (bzw. Stack neu deployen) klicken — Portainer
+holt den neuesten Stand aus dem Repo, baut neu und startet den Container neu.
+Die Daten im Docker-Volume `zeiterfassung_data` bleiben dabei unberührt.
 
 ### Backup
 
-Einfach das Dataset `apps/zeiterfassung-data` (bzw. die Datei
-`zeiterfassung.db` darin) über TrueNAS' normale Snapshot-/Replication-Tasks
-sichern wie jedes andere Dataset auch.
+Das benannte Docker-Volume `zeiterfassung_data` (enthält `zeiterfassung.db`)
+ist in Portainer unter **Volumes** sichtbar und inspizierbar. Für ein
+NAS-natives Backup kannst du es alternativ auf einen festen Host-Pfad auf
+einem TrueNAS-Dataset mappen (in `docker-compose.yml` z. B.
+`/mnt/POOL/apps/zeiterfassung-data:/data` statt `zeiterfassung_data:/data`)
+und das Dataset über die normalen Snapshot-/Replication-Tasks sichern.
 
 ## Warum diese Technik
 
